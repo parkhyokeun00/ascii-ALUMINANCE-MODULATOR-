@@ -32,8 +32,7 @@ class App {
             shadowColor: '#0D1B2A',
             midtoneColor: '#E91E63',
             highlightColor: '#FFD600',
-            saturation: 1.0,
-            invertColor: false
+            saturation: 1.0
         };
 
         this.debounceTimer = null;
@@ -54,15 +53,6 @@ class App {
             this.params.darkMode = document.body.classList.contains('dark-mode');
             this.updateParameters();
         });
-
-        // Invert Color Checkbox
-        const invertParams = document.getElementById('invert-color');
-        if (invertParams) {
-            invertParams.addEventListener('change', (e) => {
-                this.params.invertColor = e.target.checked;
-                this.updateParameters();
-            });
-        }
 
         ['gamma', 'contrast', 'brightness', 'alpha-mask', 'resolution', 'saturation',
             'char-color', 'shadow-color', 'midtone-color', 'highlight-color', 'bg-color', 'charset',
@@ -109,34 +99,26 @@ class App {
                 video.src = url;
                 video.muted = true;
                 video.loop = true;
-                video.setAttribute('playsinline', ''); // For better mobile compatibility
-
-                // Set resolution ONCE when metadata is known
-                video.onloadedmetadata = () => {
+                video.oncanplay = () => {
                     if (uploadId !== this.uploadCounter) {
                         URL.revokeObjectURL(url);
                         return;
                     }
+
+                    // Native resolution match
                     this.params.resolution = Math.min(video.videoWidth, 1024);
                     const resSlider = document.getElementById('resolution');
                     if (resSlider) resSlider.value = this.params.resolution;
-                    this.renderer.updateParams(this.params);
-                };
 
-                // Start playback when ready
-                video.oncanplay = () => {
-                    if (uploadId !== this.uploadCounter) return;
-
-                    if (this.videoRef !== video) {
-                        if (this.videoRef) {
-                            this.videoRef.pause();
-                            this.videoRef.src = "";
-                            this.videoRef.load();
-                        }
-                        this.videoRef = video;
-                        this.renderer.setImage(video);
-                        video.play().catch(e => console.error("Play failed:", e));
+                    if (this.videoRef) {
+                        this.videoRef.pause();
+                        this.videoRef.src = "";
+                        this.videoRef.load();
                     }
+                    video.play();
+                    this.videoRef = video;
+                    this.renderer.updateParams(this.params);
+                    this.renderer.setImage(video);
                 };
             } else {
                 const img = new Image();
