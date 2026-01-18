@@ -77,6 +77,7 @@ export class Renderer {
                 uMidtoneColor: { value: new THREE.Color(this.params.midtoneColor) },
                 uHighlightColor: { value: new THREE.Color(this.params.highlightColor) },
                 uSaturation: { value: this.params.saturation },
+                uInvert: { value: 0.0 },
                 uGridSize: { value: new THREE.Vector2(width, height) }
             },
             vertexShader: `
@@ -110,6 +111,7 @@ export class Renderer {
                 uniform vec3 uMidtoneColor;
                 uniform vec3 uHighlightColor;
                 uniform float uSaturation;
+                uniform float uInvert;
 
                 varying vec2 vGridUV;
                 varying vec2 vUv;
@@ -141,6 +143,11 @@ export class Renderer {
                 void main() {
                     vec4 source = texture2D(uSource, vGridUV);
                     vec3 rgb = clamp(source.rgb, 0.0, 1.0);
+                    
+                    if (uInvert > 0.5) {
+                        rgb = 1.0 - rgb;
+                    }
+
                     vec3 lab = rgb_to_oklab(rgb);
                     float lum = lab.x;
                     if (uPContrast != 1.0) lum = pow(max(0.0, lum), 1.0 / uPContrast);
@@ -249,6 +256,7 @@ export class Renderer {
             u.uPContrast.value = this.params.pContrast;
             u.uFontScale.value = this.params.fontScale;
             u.uDarkMode.value = this.params.darkMode ? 1.0 : 0.0;
+            u.uInvert.value = this.params.invertColor ? 1.0 : 0.0;
             const modeMap = { 'single': 0, 'splittone': 1, 'source': 2, 'binary': 3 };
             u.uMode.value = modeMap[this.params.mode] || 0;
             u.uSingleColor.value.set(this.params.charColor);
@@ -258,12 +266,22 @@ export class Renderer {
             u.uSaturation.value = this.params.saturation;
 
             if (this.params.charset !== oldCharset) {
-                const set = this.atlas.getSet(this.params.charset);
-                const uvs = set.map(c => {
-                    const uv = this.atlas.getCharUV(c);
-                    return new THREE.Vector2(uv.u, uv.v);
-                });
-                while (uvs.length < 70) uvs.push(uvs[uvs.length - 1]);
+                let set = this.atlas.getSet(this.params.charset);
+
+                // If binary 0,1 set, ensure 0 is dark (dense) and 1 is light (sparse) or vice versa based on preference.
+                // In standard mapping: Index 0 is Darkest (High Density), Index 69 is Lightest (Low Density/Empty)
+                // "0" is visually denser than "1"?
+                // 0 (curved) vs 1 (line). 0 usually denser.
+                // let's assume the set order in atlas is 'correct' density order.
+
+                const uvs = [];
+                for (let i = 0; i < 70; i++) {
+                    // Interpolate index
+                    const charIndex = Math.floor((i / 70.0) * set.length);
+                    const char = set[charIndex];
+                    const uv = this.atlas.getCharUV(char);
+                    uvs.push(new THREE.Vector2(uv.u, uv.v));
+                }
                 u.uCharset.value = uvs;
             }
         }
