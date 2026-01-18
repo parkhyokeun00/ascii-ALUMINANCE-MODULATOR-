@@ -37,15 +37,33 @@ export class Renderer {
         this.gridSize = { x: 1, y: 1 };
         this.instancedMesh = null;
         this.sourceTexture = null;
-        this.charsetUVs = this.prepareCharsetUVs();
+        this.charsetUVs = this.generateCharsetUVs(this.params.charset);
     }
 
-    prepareCharsetUVs() {
-        const set = this.atlas.getSet('highfi');
-        return set.map(c => {
-            const uv = this.atlas.getCharUV(c);
-            return new THREE.Vector2(uv.u, uv.v);
-        });
+    generateCharsetUVs(charsetName) {
+        const details = this.atlas.getSetDetails(charsetName);
+        const uvs = [];
+
+        // Linearize Density: Map 0..69 (Luminance) to closest density match
+        for (let i = 0; i < 70; i++) {
+            const targetDensity = i / 69.0;
+
+            // Find closest char density
+            let bestChar = details[0];
+            let minDiff = 100.0;
+
+            for (let j = 0; j < details.length; j++) {
+                const diff = Math.abs(details[j].d - targetDensity);
+                if (diff < minDiff) {
+                    minDiff = diff;
+                    bestChar = details[j];
+                }
+            }
+
+            const uv = this.atlas.getCharUV(bestChar.char);
+            uvs.push(new THREE.Vector2(uv.u, uv.v));
+        }
+        return uvs;
     }
 
     createGrid(width, height) {
@@ -77,6 +95,7 @@ export class Renderer {
                 uMidtoneColor: { value: new THREE.Color(this.params.midtoneColor) },
                 uHighlightColor: { value: new THREE.Color(this.params.highlightColor) },
                 uSaturation: { value: this.params.saturation },
+                uInvert: { value: 0.0 },
                 uGridSize: { value: new THREE.Vector2(width, height) }
             },
             vertexShader: `
@@ -110,6 +129,7 @@ export class Renderer {
                 uniform vec3 uMidtoneColor;
                 uniform vec3 uHighlightColor;
                 uniform float uSaturation;
+                uniform float uInvert;
 
                 varying vec2 vGridUV;
                 varying vec2 vUv;
@@ -141,25 +161,31 @@ export class Renderer {
                 void main() {
                     vec4 source = texture2D(uSource, vGridUV);
                     vec3 rgb = clamp(source.rgb, 0.0, 1.0);
+                    
+                    if (uInvert > 0.5) {
+                        rgb = 1.0 - rgb;
+                    }
+
                     vec3 lab = rgb_to_oklab(rgb);
                     float lum = lab.x;
                     if (uPContrast != 1.0) lum = pow(max(0.0, lum), 1.0 / uPContrast);
+                    
                     float alphaBase = (uDarkMode > 0.5) ? lum : (1.0 - lum);
                     float alpha = (alphaBase - 0.5) * uContrast + 0.5 + uBrightness;
                     alpha = pow(clamp(alpha, 0.0, 1.0), uGamma);
                     alpha = max(alpha, uMinAlpha);
-                    int charIdx = int(clamp(1.0 - lum, 0.0, 1.0) * 69.0);
+                    
+                    float charSignal = (uDarkMode > 0.5) ? lum : (1.0 - lum);
+                    int charIdx = int(clamp(charSignal, 0.0, 1.0) * 69.0);
                     vec2 charUV = uCharset[charIdx];
-                    if (uMode == 3) {
-                        float checker = mod(floor(vGridUV.x * uGridSize.x) + floor(vGridUV.y * uGridSize.y), 2.0);
-                        charUV = (checker > 0.5) ? uCharset[0] : uCharset[1];
-                    }
+                    
                     vec3 color;
                     if (uMode == 0) color = uSingleColor;
                     else if (uMode == 1) {
                         if (lum < 0.5) color = oklab_to_rgb(mix(rgb_to_oklab(uShadowColor), rgb_to_oklab(uMidtoneColor), lum*2.0));
                         else color = oklab_to_rgb(mix(rgb_to_oklab(uMidtoneColor), rgb_to_oklab(uHighlightColor), (lum-0.5)*2.0));
                     } else color = oklab_to_rgb(vec3(lab.x, lab.yz * uSaturation));
+                    
                     vec4 tex = texture2D(uAtlas, vUv * uAtlasStep + charUV);
                     if (tex.a < 0.1 || alpha < 0.01) discard;
                     gl_FragColor = vec4(clamp(color, 0.0, 1.0), tex.a * alpha);
@@ -244,6 +270,7 @@ export class Renderer {
             const u = this.instancedMesh.material.uniforms;
             u.uGamma.value = this.params.gamma;
             u.uContrast.value = this.params.contrast;
+            u.uInvert.value = this.params.invertColor ? 1.0 : 0.0;
             u.uBrightness.value = this.params.brightness;
             u.uMinAlpha.value = this.params.alphaMask;
             u.uPContrast.value = this.params.pContrast;
@@ -258,12 +285,8 @@ export class Renderer {
             u.uSaturation.value = this.params.saturation;
 
             if (this.params.charset !== oldCharset) {
-                const set = this.atlas.getSet(this.params.charset);
-                const uvs = set.map(c => {
-                    const uv = this.atlas.getCharUV(c);
-                    return new THREE.Vector2(uv.u, uv.v);
-                });
-                while (uvs.length < 70) uvs.push(uvs[uvs.length - 1]);
+                const uvs = this.generateCharsetUVs(this.params.charset);
+                this.charsetUVs = uvs;
                 u.uCharset.value = uvs;
             }
         }
