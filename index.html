@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALUMINANCE MODULATOR PRO</title>
+    <style>
+        :root {
+            --sidebar-width: 300px;
+            --header-height: 60px;
+            --footer-height: 30px;
+            --accent-green: #00ff41;
+            --bg-light: #ffffff;
+            --bg-dark: #0a0a0a;
+            --sidebar-light: #f8f8f8;
+            --sidebar-dark: #121212;
+            --border-light: #eeeeee;
+            --border-dark: #222222;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            height: 100vh;
+            display: grid;
+            grid-template-areas:
+                "sidebar header"
+                "sidebar main"
+                "sidebar footer";
+            grid-template-columns: var(--sidebar-width) 1fr;
+            grid-template-rows: var(--header-height) 1fr var(--footer-height);
+            background-color: var(--bg-light);
+            color: #111;
+            overflow: hidden;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        body.dark-mode {
+            background-color: var(--bg-dark);
+            color: #eee;
+        }
+
+        /* --- Header --- */
+        header {
+            grid-area: header;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 2rem;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-light);
+            z-index: 10;
+        }
+
+        body.dark-mode header {
+            background: rgba(10, 10, 10, 0.8);
+            border-bottom-color: var(--border-dark);
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(45deg, #111, #444);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        body.dark-mode h1 {
+            background: linear-gradient(45deg, var(--accent-green), #008f11);
+            background-clip: text;
+        }
+
+        .pro-badge {
+            font-size: 0.6rem;
+            background: #000;
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        /* --- Sidebar --- */
+        #sidebar {
+            grid-area: sidebar;
+            background: var(--sidebar-light);
+            border-right: 1px solid var(--border-light);
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            z-index: 20;
+        }
+
+        body.dark-mode #sidebar {
+            background: var(--sidebar-dark);
+            border-right-color: var(--border-dark);
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .section-title {
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border-bottom: 1px solid var(--border-light);
+            padding-bottom: 0.5rem;
+        }
+
+        body.dark-mode .section-title {
+            border-bottom-color: var(--border-dark);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .control-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #555;
+        }
+
+        body.dark-mode .control-group label {
+            color: #aaa;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: #000;
+        }
+
+        body.dark-mode input[type="range"] {
+            accent-color: var(--accent-green);
+        }
+
+        select,
+        input[type="text"] {
+            width: 100%;
+            padding: 0.5rem;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            background: white;
+            font-size: 0.8rem;
+        }
+
+        body.dark-mode select,
+        body.dark-mode input[type="text"] {
+            background: #1a1a1a;
+            border-color: #333;
+            color: #eee;
+        }
+
+        .color-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        input[type="color"] {
+            width: 44px;
+            height: 24px;
+            border: none;
+            cursor: pointer;
+            background: none;
+            padding: 0;
+        }
+
+        /* --- Main Content --- */
+        main {
+            grid-area: main;
+            position: relative;
+            background: #eee;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        body.dark-mode main {
+            background: #000;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* --- Footer --- */
+        footer {
+            grid-area: footer;
+            background: white;
+            border-top: 1px solid var(--border-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 1rem;
+            font-size: 0.65rem;
+            color: #999;
+            font-family: monospace;
+        }
+
+        body.dark-mode footer {
+            background: #0a0a0a;
+            border-top-color: var(--border-dark);
+        }
+
+        /* --- Buttons --- */
+        .upload-btn {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        body.dark-mode .upload-btn {
+            background: var(--accent-green);
+            color: #000;
+        }
+
+        .theme-toggle {
+            background: none;
+            border: 1px solid #ddd;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark-mode .theme-toggle {
+            border-color: #444;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <aside id="sidebar">
+        <div class="section">
+            <div class="section-title">Core Engine</div>
+            <div class="control-group">
+                <label for="render-mode">Render Logic</label>
+                <select id="render-mode">
+                    <option value="single">Single Color</option>
+                    <option value="splittone" selected>3-Way Split Tone</option>
+                    <option value="source">Source Color (OKLCH)</option>
+                    <option value="binary">Binary (Checkerboard)</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label for="charset">Character Set</label>
+                <select id="charset">
+                    <option value="highfi">High-Fidelity (70 levels)</option>
+                    <option value="classic">Classic ASCII</option>
+                    <option value="blocks">Blocks (Unicode)</option>
+                    <option value="binary">Pure Binary (0/1)</option>
+                </select>
+            </div>
+            <div class="control-group" id="sentence-group" style="display: none;">
+                <label for="sentence-input">Sentence</label>
+                <input type="text" id="sentence-input" value="BINARYTEXT">
+            </div>
+            <div class="control-group">
+                <label for="resolution">Grid Density (Width)</label>
+                <input type="range" id="resolution" min="20" max="1024" step="10" value="150">
+                <div style="font-size: 0.6rem; color: #888; margin-top: 2px;">* Matches source width on upload</div>
+            </div>
+            <div class="control-group">
+                <label for="font-scale">Font Scale</label>
+                <input type="range" id="font-scale" min="0.1" max="2.0" step="0.05" value="1.0">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Optical Modulation</div>
+            <div class="control-group">
+                <label for="gamma">Gamma (Midtones)</label>
+                <input type="range" id="gamma" min="0.1" max="4.0" step="0.1" value="1.8">
+            </div>
+            <div class="control-group">
+                <label for="contrast">Luminance Contrast</label>
+                <input type="range" id="contrast" min="0" max="5.0" step="0.1" value="1.2">
+            </div>
+            <div class="control-group">
+                <label for="p-contrast">Perceptual Contrast (OKLAB)</label>
+                <input type="range" id="p-contrast" min="0" max="2.0" step="0.1" value="1.0">
+            </div>
+            <div class="control-group">
+                <label for="brightness">Brightness Offset</label>
+                <input type="range" id="brightness" min="-1.0" max="1.0" step="0.05" value="0.0">
+            </div>
+            <div class="control-group">
+                <label for="alpha-mask">Min Opacity</label>
+                <input type="range" id="alpha-mask" min="0" max="0.5" step="0.01" value="0.1">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Palette & Grading</div>
+            <div class="control-group">
+                <div class="color-row">
+                    <label>App Background</label>
+                    <input type="color" id="bg-color" value="#ffffff">
+                </div>
+            </div>
+            <div id="single-color-group" style="display: none;" class="control-group">
+                <div class="color-row">
+                    <label>Text Color</label>
+                    <input type="color" id="char-color" value="#000000">
+                </div>
+            </div>
+            <div id="split-tone-group" class="section">
+                <div class="color-row">
+                    <label>Shadows</label>
+                    <input type="color" id="shadow-color" value="#0D1B2A">
+                </div>
+                <div class="color-row">
+                    <label>Midtones</label>
+                    <input type="color" id="midtone-color" value="#E91E63">
+                </div>
+                <div class="color-row">
+                    <label>Highlights</label>
+                    <input type="color" id="highlight-color" value="#FFD600">
+                </div>
+            </div>
+            <div id="oklch-group" style="display: none;" class="control-group">
+                <label for="saturation">Saturation</label>
+                <input type="range" id="saturation" min="0" max="3.0" step="0.1" value="1.0">
+            </div>
+        </div>
+    </aside>
+
+    <header>
+        <h1>ALUMINANCE MODULATOR <span class="pro-badge">PRO</span></h1>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <button class="theme-toggle" id="theme-toggle" title="Toggle Sidebar Theme">🌓</button>
+            <button class="upload-btn" onclick="document.getElementById('file-input').click()">UPLOAD SOURCE</button>
+        </div>
+        <input type="file" id="file-input" accept="image/*,video/mp4">
+    </header>
+
+    <main>
+        <div id="canvas-container"></div>
+    </main>
+
+    <footer>
+        <div id="status-left">ENGINE ACTIVE | WEBGL 2.0</div>
+        <div id="status-right">RESOLUTION: <span id="res-display">150x150</span> | MODE: <span id="mode-display">SPLIT
+                TONE</span></div>
+    </footer>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
